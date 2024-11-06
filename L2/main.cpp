@@ -1,4 +1,4 @@
-// куб и пирамида (оно живое)
+// куб, пирамида, цилиндр (оно живое)
 
 #include <SFML/Graphics.hpp>
 #include <SFML/OpenGL.hpp>
@@ -15,9 +15,13 @@ struct Vector3 {
 Vector3 vanishingPointLeft = { -10.0f, 0.0f, -20.0f };
 Vector3 vanishingPointRight = { 10.0f, 0.0f, -20.0f };
 
+#define M_PI 3.14159265358979323846
+
 // Параметры куба
 Vector3 cubeOrigin = { 0.0f, 0.0f, 0.0f };
 Vector3 pyramidOrigin = { 0.0f, 0.0f, 0.0f };  // Начальная позиция пирамиды
+Vector3 cylinderOrigin = { 0.0f, 0.0f, 0.0f };  // Инициализация центра цилиндра
+
 
 float cubeSize = 1.0f;
 float moveSpeed = 0.05f;
@@ -29,6 +33,76 @@ int selectedObject = 3;  // 1 - левая точка схода, 2 - права
 Vector3 normalize(const Vector3& v) {
 	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 	return { v.x / length, v.y / length, v.z / length };
+}
+
+// ------------------------------------------------------------------------
+
+// Функция для вычисления вершин цилиндра с двумя точками схода
+std::vector<Vector3> calculateCylinderVertices(Vector3 origin, float radius, float height, int segments) {
+	std::vector<Vector3> vertices;
+
+	// Векторы к точкам схода от начальной точки
+	Vector3 toLeft = normalize({ vanishingPointLeft.x - origin.x, vanishingPointLeft.y - origin.y, vanishingPointLeft.z - origin.z });
+	Vector3 toRight = normalize({ vanishingPointRight.x - origin.x, vanishingPointRight.y - origin.y, vanishingPointRight.z - origin.z });
+
+	// Переменные для углов (по умолчанию 360° / segments)
+	float angleStep = 2 * M_PI / segments;
+
+	// Вычисляем вершины для нижнего основания цилиндра
+	for (int i = 0; i < segments; ++i) {
+		float angle = i * angleStep;
+		// Координаты точки на окружности
+		float x = radius * cos(angle);
+		float z = radius * sin(angle);
+
+		// Нижняя окружность
+		float y_bottom = origin.y + (toLeft.y * x + toRight.y * z);
+		Vector3 bottomPoint = { origin.x + toLeft.x * x + toRight.x * z, y_bottom, origin.z + toLeft.z * x + toRight.z * z };
+		vertices.push_back(bottomPoint);
+
+		// Верхняя окружность
+		float y_top = origin.y + height + (toLeft.y * x + toRight.y * z);
+		Vector3 topPoint = { origin.x + toLeft.x * x + toRight.x * z, y_top, origin.z + toLeft.z * x + toRight.z * z };
+		vertices.push_back(topPoint);
+	}
+
+	return vertices;
+}
+
+
+// Функция для рисования цилиндра с разными цветами для каждой окружности и боковых граней
+void drawCylinder(const std::vector<Vector3>& vertices, int segments) {
+	// Рисуем нижнюю окружность (оранжевая)
+	glColor3f(1.0f, 0.5f, 0.0f);  // Оранжевый
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Центр нижней окружности
+	for (int i = 0; i < segments; ++i) {
+		glVertex3f(vertices[2 * i].x, vertices[2 * i].y, vertices[2 * i].z);  // Нижняя окружность
+	}
+	glEnd();
+
+	// Рисуем верхнюю окружность (жёлтая)
+	glColor3f(1.0f, 1.0f, 0.0f);  // Жёлтый
+	glBegin(GL_TRIANGLE_FAN);
+	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z); // Центр верхней окружности
+	for (int i = 0; i < segments; ++i) {
+		glVertex3f(vertices[2 * i + 1].x, vertices[2 * i + 1].y, vertices[2 * i + 1].z);  // Верхняя окружность
+	}
+	glEnd();
+
+	// Рисуем боковую поверхность цилиндра (синий)
+	glColor3f(0.0f, 0.0f, 1.0f);  // Синий
+	glBegin(GL_QUADS);
+	for (int i = 0; i < segments; ++i) {
+		int next = (i + 1) % segments;
+
+		// Боковые квадраты
+		glVertex3f(vertices[2 * i].x, vertices[2 * i].y, vertices[2 * i].z);  // Нижняя
+		glVertex3f(vertices[2 * next].x, vertices[2 * next].y, vertices[2 * next].z);  // Нижняя (следующая)
+		glVertex3f(vertices[2 * next + 1].x, vertices[2 * next + 1].y, vertices[2 * next + 1].z);  // Верхняя (следующая)
+		glVertex3f(vertices[2 * i + 1].x, vertices[2 * i + 1].y, vertices[2 * i + 1].z);  // Верхняя
+	}
+	glEnd();
 }
 
 // Функция для вычисления вершин пирамиды в двухточечной перспективе
@@ -186,6 +260,8 @@ void drawCube(const std::vector<Vector3>& vertices) {
 	glEnd();
 }
 
+// ------------------------------------------------------------------------
+
 // Функция для отображения линий схода
 void drawVanishingLines(const std::vector<Vector3>& vertices) {
 	glColor3f(0.5f, 0.5f, 0.5f);  // Серый цвет для линий схода
@@ -211,11 +287,10 @@ void drawVanishingLines(const std::vector<Vector3>& vertices) {
 }
 
 // Функция обработки ввода для перемещения выбранного объекта
-// Обработка ввода для перемещения выбранного объекта
 void handleInput() {
 	Vector3* selectedObjectPosition = nullptr;
 
-	// Выбор объекта для перемещения
+	// Логика выбора объекта для управления
 	if (selectedObject == 1) {
 		selectedObjectPosition = &vanishingPointLeft;  // Левая точка схода
 	}
@@ -228,30 +303,57 @@ void handleInput() {
 	else if (selectedObject == 4) {
 		selectedObjectPosition = &pyramidOrigin;  // Пирамида
 	}
+	else if (selectedObject == 5) {
+		selectedObjectPosition = &cylinderOrigin;  // Цилиндр
+	}
 
-	// Если выбранный объект существует, то обрабатываем его перемещение
+	// Если объект выбран, обрабатываем его движение
 	if (selectedObjectPosition != nullptr) {
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-			selectedObjectPosition->z -= moveSpeed;
+		if (selectedObject == 5) {
+			// Обработка ввода для цилиндра
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+				selectedObjectPosition->z -= moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+				selectedObjectPosition->z += moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+				selectedObjectPosition->x -= moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+				selectedObjectPosition->x += moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
+				selectedObjectPosition->y += moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
+				selectedObjectPosition->y -= moveSpeed;
+			}
 		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-			selectedObjectPosition->z += moveSpeed;
-		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-			selectedObjectPosition->x -= moveSpeed;
-		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-			selectedObjectPosition->x += moveSpeed;
-		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
-			selectedObjectPosition->y += moveSpeed;
-		}
-		if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
-			selectedObjectPosition->y -= moveSpeed;
+		else {
+			// Обработка ввода для остальных объектов
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+				selectedObjectPosition->z -= moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+				selectedObjectPosition->z += moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+				selectedObjectPosition->x -= moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+				selectedObjectPosition->x += moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
+				selectedObjectPosition->y += moveSpeed;
+			}
+			if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
+				selectedObjectPosition->y -= moveSpeed;
+			}
 		}
 	}
 
-	// Переключение между объектами управления
+	// Переключение между объектами
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num1)) {
 		selectedObject = 1;  // Выбираем левую точку схода
 	}
@@ -264,12 +366,16 @@ void handleInput() {
 	else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num4)) {
 		selectedObject = 4;  // Выбираем пирамиду
 	}
+	else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num5)) {
+		selectedObject = 5;  // Выбираем цилиндр
+	}
 }
 
 
 
+
 int main() {
-	sf::RenderWindow window(sf::VideoMode(1200, 1000), "Cube and Pyramid with Vanishing Lines in Two-Point Perspective", sf::Style::Default, sf::ContextSettings(24));
+	sf::RenderWindow window(sf::VideoMode(1200, 1000), "Cube, Pyramid and Cylinder with Vanishing Lines", sf::Style::Default, sf::ContextSettings(24));
 	window.setFramerateLimit(60);
 
 	glEnable(GL_DEPTH_TEST);
@@ -292,7 +398,9 @@ int main() {
 		// Пересчитываем вершины куба
 		std::vector<Vector3> cubeVertices = calculateCubeVertices(cubeOrigin, cubeSize);
 		// Пересчитываем вершины пирамиды
-		std::vector<Vector3> pyramidVertices = calculatePyramidVertices(pyramidOrigin, cubeSize, 1.0f); // Примерный размер основания и высоты пирамиды
+		std::vector<Vector3> pyramidVertices = calculatePyramidVertices(pyramidOrigin, cubeSize, 1.0f);
+		// Пересчитываем вершины цилиндра
+		std::vector<Vector3> cylinderVertices = calculateCylinderVertices(cylinderOrigin, 0.5f, cubeSize * 0.9f, 20); // 20 сегментов
 
 		// Очищаем буфер
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -304,9 +412,10 @@ int main() {
 
 		// Рисуем куб
 		drawCube(cubeVertices);
-
 		// Рисуем пирамиду
 		drawPyramid(pyramidVertices);
+		// Рисуем цилиндр
+		drawCylinder(cylinderVertices, 20);  // 20 сегментов цилиндра
 
 		// Рисуем линии схода
 		drawVanishingLines(cubeVertices);
