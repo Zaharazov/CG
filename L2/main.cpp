@@ -292,7 +292,7 @@ int main() {
 		// Пересчитываем вершины куба
 		std::vector<Vector3> cubeVertices = calculateCubeVertices(cubeOrigin, cubeSize);
 		// Пересчитываем вершины пирамиды
-		std::vector<Vector3> pyramidVertices = calculatePyramidVertices(pyramidOrigin, cubeSize, 2.0f); // Примерный размер основания и высоты пирамиды
+		std::vector<Vector3> pyramidVertices = calculatePyramidVertices(pyramidOrigin, cubeSize, 1.0f); // Примерный размер основания и высоты пирамиды
 
 		// Очищаем буфер
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
