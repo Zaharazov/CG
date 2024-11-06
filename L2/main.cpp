@@ -1,4 +1,4 @@
-// куб (оно живое)
+// куб и пирамида (оно живое)
 
 #include <SFML/Graphics.hpp>
 #include <SFML/OpenGL.hpp>
@@ -17,6 +17,8 @@ Vector3 vanishingPointRight = { 10.0f, 0.0f, -20.0f };
 
 // Параметры куба
 Vector3 cubeOrigin = { 0.0f, 0.0f, 0.0f };
+Vector3 pyramidOrigin = { 0.0f, 0.0f, 0.0f };  // Начальная позиция пирамиды
+
 float cubeSize = 1.0f;
 float moveSpeed = 0.05f;
 
@@ -28,6 +30,65 @@ Vector3 normalize(const Vector3& v) {
 	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
 	return { v.x / length, v.y / length, v.z / length };
 }
+
+// Функция для вычисления вершин пирамиды в двухточечной перспективе
+std::vector<Vector3> calculatePyramidVertices(Vector3 origin, float baseSize, float height) {
+	std::vector<Vector3> vertices;
+
+	// Векторы к точкам схода от начальной точки
+	Vector3 toLeft = normalize({ vanishingPointLeft.x - origin.x, vanishingPointLeft.y - origin.y, vanishingPointLeft.z - origin.z });
+	Vector3 toRight = normalize({ vanishingPointRight.x - origin.x, vanishingPointRight.y - origin.y, vanishingPointRight.z - origin.z });
+
+	// Основание пирамиды - треугольник
+	Vector3 P0 = origin;
+	Vector3 P1 = { origin.x + toLeft.x * baseSize, origin.y + toLeft.y * baseSize, origin.z + toLeft.z * baseSize };
+	Vector3 P2 = { origin.x + toRight.x * baseSize, origin.y + toRight.y * baseSize, origin.z + toRight.z * baseSize };
+
+	// Апекс пирамиды (верхняя точка)
+	Vector3 apex = { origin.x, origin.y + height, origin.z };
+
+	// Добавляем вершины в список
+	vertices.push_back(P0);
+	vertices.push_back(P1);
+	vertices.push_back(P2);
+	vertices.push_back(apex);
+
+	return vertices;
+}
+
+
+// Функция для рисования пирамиды с разными цветами для каждой грани
+void drawPyramid(const std::vector<Vector3>& vertices) {
+	glBegin(GL_TRIANGLES);
+
+	// Передняя грань - Красный
+	glColor3f(1.0f, 0.0f, 0.0f);
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
+	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
+	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
+
+	// Левая грань - Зеленый
+	glColor3f(0.0f, 1.0f, 0.0f);
+	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
+	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
+	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
+
+	// Правая грань - Синий
+	glColor3f(0.0f, 0.0f, 1.0f);
+	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
+	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
+
+	// Основание пирамиды - Оранжевый (Треугольник)
+	glColor3f(1.0f, 0.5f, 0.0f);
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
+	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
+	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
+
+	glEnd();
+}
+
+
 
 // Вычисление вершин куба с равными сторонами в двухточечной перспективе
 std::vector<Vector3> calculateCubeVertices(Vector3 origin, float size) {
@@ -150,55 +211,65 @@ void drawVanishingLines(const std::vector<Vector3>& vertices) {
 }
 
 // Функция обработки ввода для перемещения выбранного объекта
+// Обработка ввода для перемещения выбранного объекта
 void handleInput() {
-	Vector3* selectedPoint = nullptr;
+	Vector3* selectedObjectPosition = nullptr;
 
+	// Выбор объекта для перемещения
 	if (selectedObject == 1) {
-		selectedPoint = &vanishingPointLeft;
+		selectedObjectPosition = &vanishingPointLeft;  // Левая точка схода
 	}
 	else if (selectedObject == 2) {
-		selectedPoint = &vanishingPointRight;
+		selectedObjectPosition = &vanishingPointRight;  // Правая точка схода
 	}
 	else if (selectedObject == 3) {
-		selectedPoint = &cubeOrigin;
+		selectedObjectPosition = &cubeOrigin;  // Куб
+	}
+	else if (selectedObject == 4) {
+		selectedObjectPosition = &pyramidOrigin;  // Пирамида
 	}
 
-	// Проверка нажатия клавиш для управления
-	if (selectedPoint != nullptr) {
+	// Если выбранный объект существует, то обрабатываем его перемещение
+	if (selectedObjectPosition != nullptr) {
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-			selectedPoint->z -= moveSpeed;
+			selectedObjectPosition->z -= moveSpeed;
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-			selectedPoint->z += moveSpeed;
+			selectedObjectPosition->z += moveSpeed;
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-			selectedPoint->x -= moveSpeed;
+			selectedObjectPosition->x -= moveSpeed;
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-			selectedPoint->x += moveSpeed;
+			selectedObjectPosition->x += moveSpeed;
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
-			selectedPoint->y += moveSpeed;
+			selectedObjectPosition->y += moveSpeed;
 		}
 		if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
-			selectedPoint->y -= moveSpeed;
+			selectedObjectPosition->y -= moveSpeed;
 		}
 	}
 
 	// Переключение между объектами управления
 	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num1)) {
-		selectedObject = 1;
+		selectedObject = 1;  // Выбираем левую точку схода
 	}
 	else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num2)) {
-		selectedObject = 2;
+		selectedObject = 2;  // Выбираем правую точку схода
 	}
 	else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num3)) {
-		selectedObject = 3;
+		selectedObject = 3;  // Выбираем куб
+	}
+	else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num4)) {
+		selectedObject = 4;  // Выбираем пирамиду
 	}
 }
 
+
+
 int main() {
-	sf::RenderWindow window(sf::VideoMode(1200, 1000), "Cube with Vanishing Lines in Two-Point Perspective", sf::Style::Default, sf::ContextSettings(24));
+	sf::RenderWindow window(sf::VideoMode(1200, 1000), "Cube and Pyramid with Vanishing Lines in Two-Point Perspective", sf::Style::Default, sf::ContextSettings(24));
 	window.setFramerateLimit(60);
 
 	glEnable(GL_DEPTH_TEST);
@@ -220,6 +291,8 @@ int main() {
 
 		// Пересчитываем вершины куба
 		std::vector<Vector3> cubeVertices = calculateCubeVertices(cubeOrigin, cubeSize);
+		// Пересчитываем вершины пирамиды
+		std::vector<Vector3> pyramidVertices = calculatePyramidVertices(pyramidOrigin, cubeSize, 2.0f); // Примерный размер основания и высоты пирамиды
 
 		// Очищаем буфер
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
@@ -231,6 +304,9 @@ int main() {
 
 		// Рисуем куб
 		drawCube(cubeVertices);
+
+		// Рисуем пирамиду
+		drawPyramid(pyramidVertices);
 
 		// Рисуем линии схода
 		drawVanishingLines(cubeVertices);
