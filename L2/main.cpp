@@ -1,4 +1,4 @@
-// только куб (это кошмар)
+// куб (оно живое)
 
 #include <SFML/Graphics.hpp>
 #include <SFML/OpenGL.hpp>
@@ -20,6 +20,9 @@ Vector3 cubeOrigin = { 0.0f, 0.0f, 0.0f };
 float cubeSize = 1.0f;
 float moveSpeed = 0.05f;
 
+// Переменная для отслеживания выбранного объекта
+int selectedObject = 3;  // 1 - левая точка схода, 2 - правая точка схода, 3 - куб
+
 // Функция нормализации вектора
 Vector3 normalize(const Vector3& v) {
 	float length = std::sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -31,23 +34,32 @@ std::vector<Vector3> calculateCubeVertices(Vector3 origin, float size) {
 	std::vector<Vector3> vertices;
 
 	// Векторы к точкам схода от начальной точки
-	Vector3 toLeft = normalize({ vanishingPointLeft.x - origin.x, 0.0f, vanishingPointLeft.z - origin.z });
-	Vector3 toRight = normalize({ vanishingPointRight.x - origin.x, 0.0f, vanishingPointRight.z - origin.z });
+	Vector3 toLeft = normalize({ vanishingPointLeft.x - origin.x, vanishingPointLeft.y - origin.y, vanishingPointLeft.z - origin.z });
+	Vector3 toRight = normalize({ vanishingPointRight.x - origin.x, vanishingPointRight.y - origin.y, vanishingPointRight.z - origin.z });
 
-	// Нижняя грань
+	// Нижняя грань куба
 	Vector3 P0 = origin;
-	Vector3 P1 = { origin.x + toLeft.x * size, origin.y, origin.z + toLeft.z * size };
-	Vector3 P2 = { origin.x + toRight.x * size, origin.y, origin.z + toRight.z * size };
-	Vector3 P3 = { P1.x + toRight.x * size, origin.y, P1.z + toRight.z * size };
+	Vector3 P1 = { origin.x + toLeft.x * size, origin.y + toLeft.y * size, origin.z + toLeft.z * size };
+	Vector3 P2 = { origin.x + toRight.x * size, origin.y + toRight.y * size, origin.z + toRight.z * size };
+	Vector3 P3 = { P1.x + toRight.x * size, P1.y + toRight.y * size, P1.z + toRight.z * size };
 
 	// Высота куба
 	float height = size;
 
-	// Верхняя грань (на высоте height от нижней грани)
-	Vector3 P4 = { P0.x, P0.y + height, P0.z };
-	Vector3 P5 = { P1.x, P1.y + height, P1.z };
-	Vector3 P6 = { P2.x, P2.y + height, P2.z };
-	Vector3 P7 = { P3.x, P3.y + height, P3.z };
+	// Верхняя грань (P4, P5, P6, P7) должна быть на расстоянии height выше от нижней грани
+	Vector3 up = { 0.0f, 1.0f, 0.0f }; // Вектор вверх для верхней грани
+
+	// Верхняя передняя левая вершина
+	Vector3 P4 = { P0.x + up.x * height, P0.y + up.y * height, P0.z + up.z * height };
+
+	// Верхняя задняя правая вершина
+	Vector3 P5 = { P1.x + up.x * height, P1.y + (up.y - 0.035f) * height, P1.z + up.z * height };
+
+	// Верхняя задняя левая вершина
+	Vector3 P6 = { P2.x + up.x * height, P2.y + (up.y - 0.035f) * height, P2.z + up.z * height };
+
+	// Верхняя задняя главная вершина
+	Vector3 P7 = { P3.x + up.x * height, P3.y + (up.y - 0.065f) * height , P3.z + up.z * height };
 
 	// Добавляем вершины в список
 	vertices.push_back(P0);
@@ -62,49 +74,49 @@ std::vector<Vector3> calculateCubeVertices(Vector3 origin, float size) {
 	return vertices;
 }
 
-// Функция для рисования куба
-// Функция для рисования куба
+
+
 // Функция для рисования куба с разными цветами для каждой грани
 void drawCube(const std::vector<Vector3>& vertices) {
 	glBegin(GL_QUADS);
 
 	// Нижняя грань - Красный
-	glColor3f(1.0f, 0.0f, 0.0f);  // Красный
+	glColor3f(1.0f, 0.0f, 0.0f);
 	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
 	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
 	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
 	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
 
 	// Верхняя грань - Зеленый
-	glColor3f(0.0f, 1.0f, 0.0f);  // Зеленый
+	glColor3f(0.0f, 1.0f, 0.0f);
 	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z);
 	glVertex3f(vertices[5].x, vertices[5].y, vertices[5].z);
 	glVertex3f(vertices[7].x, vertices[7].y, vertices[7].z);
 	glVertex3f(vertices[6].x, vertices[6].y, vertices[6].z);
 
 	// Передняя грань - Синий
-	glColor3f(0.0f, 0.0f, 1.0f);  // Синий
+	glColor3f(0.0f, 0.0f, 1.0f);
 	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
 	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
 	glVertex3f(vertices[5].x, vertices[5].y, vertices[5].z);
 	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z);
 
 	// Задняя грань - Желтый
-	glColor3f(1.0f, 1.0f, 0.0f);  // Желтый
+	glColor3f(1.0f, 1.0f, 0.0f);
 	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
 	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
 	glVertex3f(vertices[7].x, vertices[7].y, vertices[7].z);
 	glVertex3f(vertices[6].x, vertices[6].y, vertices[6].z);
 
 	// Левая грань - Оранжевый
-	glColor3f(1.0f, 0.5f, 0.0f);  // Оранжевый
+	glColor3f(1.0f, 0.5f, 0.0f);
 	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
 	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z);
 	glVertex3f(vertices[6].x, vertices[6].y, vertices[6].z);
 	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
 
 	// Правая грань - Фиолетовый
-	glColor3f(0.5f, 0.0f, 1.0f);  // Фиолетовый
+	glColor3f(0.5f, 0.0f, 1.0f);
 	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
 	glVertex3f(vertices[5].x, vertices[5].y, vertices[5].z);
 	glVertex3f(vertices[7].x, vertices[7].y, vertices[7].z);
@@ -113,11 +125,9 @@ void drawCube(const std::vector<Vector3>& vertices) {
 	glEnd();
 }
 
-
-
 // Функция для отображения линий схода
 void drawVanishingLines(const std::vector<Vector3>& vertices) {
-	glColor3f(1.0f, 0.0f, 0.0f);
+	glColor3f(0.5f, 0.5f, 0.5f);  // Серый цвет для линий схода
 	glBegin(GL_LINES);
 
 	// Линии схода от левой точки схода
@@ -125,35 +135,65 @@ void drawVanishingLines(const std::vector<Vector3>& vertices) {
 	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Нижняя передняя
 	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
 	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z); // Верхняя передняя
+	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
+	glVertex3f(vertices[6].x, vertices[6].y, vertices[6].z); // Верхняя справа
 
 	// Линии схода от правой точки схода
 	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
-	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z); // Нижняя передняя
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Нижняя передняя
 	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
-	glVertex3f(vertices[6].x, vertices[6].y, vertices[6].z); // Верхняя передняя
+	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z); // Верхняя передняя
+	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
+	glVertex3f(vertices[5].x, vertices[5].y, vertices[5].z); // Верхняя слева
 
 	glEnd();
 }
 
-// Функция обработки ввода для перемещения куба
-void handleInput(Vector3 &origin) {
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-		origin.z -= moveSpeed;
+// Функция обработки ввода для перемещения выбранного объекта
+void handleInput() {
+	Vector3* selectedPoint = nullptr;
+
+	if (selectedObject == 1) {
+		selectedPoint = &vanishingPointLeft;
 	}
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-		origin.z += moveSpeed;
+	else if (selectedObject == 2) {
+		selectedPoint = &vanishingPointRight;
 	}
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-		origin.x -= moveSpeed;
+	else if (selectedObject == 3) {
+		selectedPoint = &cubeOrigin;
 	}
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-		origin.x += moveSpeed;
+
+	// Проверка нажатия клавиш для управления
+	if (selectedPoint != nullptr) {
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+			selectedPoint->z -= moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+			selectedPoint->z += moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+			selectedPoint->x -= moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+			selectedPoint->x += moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
+			selectedPoint->y += moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
+			selectedPoint->y -= moveSpeed;
+		}
 	}
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
-		origin.y += moveSpeed;
+
+	// Переключение между объектами управления
+	if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num1)) {
+		selectedObject = 1;
 	}
-	if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
-		origin.y -= moveSpeed;
+	else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num2)) {
+		selectedObject = 2;
+	}
+	else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Num3)) {
+		selectedObject = 3;
 	}
 }
 
@@ -176,9 +216,9 @@ int main() {
 		}
 
 		// Обработка ввода
-		handleInput(cubeOrigin);
+		handleInput();
 
-		// Пересчитываем вершины
+		// Пересчитываем вершины куба
 		std::vector<Vector3> cubeVertices = calculateCubeVertices(cubeOrigin, cubeSize);
 
 		// Очищаем буфер
