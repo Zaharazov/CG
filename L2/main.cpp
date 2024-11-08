@@ -12,8 +12,8 @@ struct Vector3 {
 };
 
 // Точки схода
-Vector3 vanishingPointLeft = { -10.0f, 0.0f, -20.0f };
-Vector3 vanishingPointRight = { 10.0f, 0.0f, -20.0f };
+Vector3 vanishingPointLeft = { -15.0f, 0.0f, -20.0f };
+Vector3 vanishingPointRight = { 15.0f, 0.0f, -20.0f };
 
 #define M_PI 3.14159265358979323846
 
@@ -105,7 +105,7 @@ void drawCylinder(const std::vector<Vector3>& vertices, int segments) {
 	glEnd();
 }
 
-// Функция для вычисления вершин пирамиды в двухточечной перспективе
+// Функция для вычисления вершин пирамиды с треугольным основанием, центрированного относительно основания
 std::vector<Vector3> calculatePyramidVertices(Vector3 origin, float baseSize, float height) {
 	std::vector<Vector3> vertices;
 
@@ -113,13 +113,20 @@ std::vector<Vector3> calculatePyramidVertices(Vector3 origin, float baseSize, fl
 	Vector3 toLeft = normalize({ vanishingPointLeft.x - origin.x, vanishingPointLeft.y - origin.y, vanishingPointLeft.z - origin.z });
 	Vector3 toRight = normalize({ vanishingPointRight.x - origin.x, vanishingPointRight.y - origin.y, vanishingPointRight.z - origin.z });
 
-	// Основание пирамиды - треугольник
-	Vector3 P0 = origin;
-	Vector3 P1 = { origin.x + toLeft.x * baseSize, origin.y + toLeft.y * baseSize, origin.z + toLeft.z * baseSize };
-	Vector3 P2 = { origin.x + toRight.x * baseSize, origin.y + toRight.y * baseSize, origin.z + toRight.z * baseSize };
+	// Расчет вершин треугольного основания
+	Vector3 P0 = { origin.x, origin.y, origin.z }; // Вершина основания
+	Vector3 P1 = { origin.x + toLeft.x * baseSize, origin.y + toLeft.y * baseSize, origin.z + toLeft.z * baseSize }; // Вершина основания
+	Vector3 P2 = { origin.x + toRight.x * baseSize, origin.y + toRight.y * baseSize, origin.z + toRight.z * baseSize }; // Вершина основания
 
-	// Апекс пирамиды (верхняя точка)
-	Vector3 apex = { origin.x, origin.y + height, origin.z };
+	// Находим центр треугольного основания (центр масс)
+	Vector3 centerBase = {
+		(P0.x + P1.x + P2.x) / 3.0f,
+		(P0.y + P1.y + P2.y) / 3.0f,
+		(P0.z + P1.z + P2.z) / 3.0f
+	};
+
+	// Апекс пирамиды (верхняя точка) относительно центра основания
+	Vector3 apex = { centerBase.x, centerBase.y + height, centerBase.z };
 
 	// Добавляем вершины в список
 	vertices.push_back(P0);
@@ -131,36 +138,38 @@ std::vector<Vector3> calculatePyramidVertices(Vector3 origin, float baseSize, fl
 }
 
 
-// Функция для рисования пирамиды с разными цветами для каждой грани
+
+// Функция для рисования пирамиды с треугольным основанием и разными цветами для каждой грани
 void drawPyramid(const std::vector<Vector3>& vertices) {
 	glBegin(GL_TRIANGLES);
 
 	// Передняя грань - Красный
 	glColor3f(1.0f, 0.0f, 0.0f);
-	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
-	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
-	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // P0
+	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z); // P1
+	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z); // Apex
 
 	// Левая грань - Зеленый
 	glColor3f(0.0f, 1.0f, 0.0f);
-	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
-	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
-	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
+	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z); // P1
+	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z); // P2
+	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z); // Apex
 
 	// Правая грань - Синий
 	glColor3f(0.0f, 0.0f, 1.0f);
-	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
-	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
-	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z);
+	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z); // P2
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // P0
+	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z); // Apex
 
 	// Основание пирамиды - Оранжевый (Треугольник)
 	glColor3f(1.0f, 0.5f, 0.0f);
-	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z);
-	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z);
-	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z);
+	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // P0
+	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z); // P1
+	glVertex3f(vertices[2].x, vertices[2].y, vertices[2].z); // P2
 
 	glEnd();
 }
+
 
 
 
@@ -375,7 +384,7 @@ void handleInput() {
 
 
 int main() {
-	sf::RenderWindow window(sf::VideoMode(1200, 1000), "Cube, Pyramid and Cylinder with Vanishing Lines", sf::Style::Default, sf::ContextSettings(24));
+	sf::RenderWindow window(sf::VideoMode(1600, 1000), "Cube, Pyramid and Cylinder with Vanishing Lines", sf::Style::Default, sf::ContextSettings(24));
 	window.setFramerateLimit(60);
 
 	glEnable(GL_DEPTH_TEST);
