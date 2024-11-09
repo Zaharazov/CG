@@ -12,12 +12,12 @@ struct Vector3 {
 };
 
 // Точки схода
-Vector3 vanishingPointLeft = { -15.0f, 0.0f, -20.0f };
-Vector3 vanishingPointRight = { 15.0f, 0.0f, -20.0f };
+Vector3 vanishingPointLeft = { -25.0f, 0.0f, -20.0f };
+Vector3 vanishingPointRight = { 25.0f, 0.0f, -20.0f };
 
 #define M_PI 3.14159265358979323846
 
-// Параметры куба
+// Параметры фигур
 Vector3 cubeOrigin = { 0.0f, 0.0f, 0.0f };
 Vector3 pyramidOrigin = { 0.0f, 0.0f, 0.0f };  // Начальная позиция пирамиды
 Vector3 cylinderOrigin = { 0.0f, 0.0f, 0.0f };  // Инициализация центра цилиндра
@@ -27,7 +27,7 @@ float cubeSize = 1.0f;
 float moveSpeed = 0.05f;
 
 // Переменная для отслеживания выбранного объекта
-int selectedObject = 3;  // 1 - левая точка схода, 2 - правая точка схода, 3 - куб
+int selectedObject = 3;
 
 // Функция нормализации вектора
 Vector3 normalize(const Vector3& v) {
@@ -45,7 +45,7 @@ std::vector<Vector3> calculateCylinderVertices(Vector3 origin, float radius, flo
 	Vector3 toLeft = normalize({ vanishingPointLeft.x - origin.x, vanishingPointLeft.y - origin.y, vanishingPointLeft.z - origin.z });
 	Vector3 toRight = normalize({ vanishingPointRight.x - origin.x, vanishingPointRight.y - origin.y, vanishingPointRight.z - origin.z });
 
-	// Переменные для углов (по умолчанию 360° / segments)
+	// Переменные для углов 
 	float angleStep = 2 * M_PI / segments;
 
 	// Вычисляем вершины для нижнего основания цилиндра
@@ -70,10 +70,10 @@ std::vector<Vector3> calculateCylinderVertices(Vector3 origin, float radius, flo
 }
 
 
-// Функция для рисования цилиндра с разными цветами для каждой окружности и боковых граней
+// Функция для рисования цилиндра 
 void drawCylinder(const std::vector<Vector3>& vertices, int segments) {
 	// Рисуем нижнюю окружность (оранжевая)
-	glColor3f(1.0f, 0.5f, 0.0f);  // Оранжевый
+	glColor3f(1.0f, 0.5f, 0.0f); 
 	glBegin(GL_TRIANGLE_FAN);
 	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Центр нижней окружности
 	for (int i = 0; i < segments; ++i) {
@@ -82,7 +82,7 @@ void drawCylinder(const std::vector<Vector3>& vertices, int segments) {
 	glEnd();
 
 	// Рисуем верхнюю окружность (жёлтая)
-	glColor3f(1.0f, 1.0f, 0.0f);  // Жёлтый
+	glColor3f(1.0f, 1.0f, 0.0f); 
 	glBegin(GL_TRIANGLE_FAN);
 	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z); // Центр верхней окружности
 	for (int i = 0; i < segments; ++i) {
@@ -91,7 +91,7 @@ void drawCylinder(const std::vector<Vector3>& vertices, int segments) {
 	glEnd();
 
 	// Рисуем боковую поверхность цилиндра (синий)
-	glColor3f(0.0f, 0.0f, 1.0f);  // Синий
+	glColor3f(0.0f, 0.0f, 1.0f);  
 	glBegin(GL_QUADS);
 	for (int i = 0; i < segments; ++i) {
 		int next = (i + 1) % segments;
@@ -105,7 +105,7 @@ void drawCylinder(const std::vector<Vector3>& vertices, int segments) {
 	glEnd();
 }
 
-// Функция для вычисления вершин пирамиды с треугольным основанием, центрированного относительно основания
+// Функция для вычисления вершин пирамиды 
 std::vector<Vector3> calculatePyramidVertices(Vector3 origin, float baseSize, float height) {
 	std::vector<Vector3> vertices;
 
@@ -118,14 +118,14 @@ std::vector<Vector3> calculatePyramidVertices(Vector3 origin, float baseSize, fl
 	Vector3 P1 = { origin.x + toLeft.x * baseSize, origin.y + toLeft.y * baseSize, origin.z + toLeft.z * baseSize }; // Вершина основания
 	Vector3 P2 = { origin.x + toRight.x * baseSize, origin.y + toRight.y * baseSize, origin.z + toRight.z * baseSize }; // Вершина основания
 
-	// Находим центр треугольного основания (центр масс)
+	// Находим центр треугольного основания
 	Vector3 centerBase = {
 		(P0.x + P1.x + P2.x) / 3.0f,
 		(P0.y + P1.y + P2.y) / 3.0f,
 		(P0.z + P1.z + P2.z) / 3.0f
 	};
 
-	// Апекс пирамиды (верхняя точка) относительно центра основания
+	// Верхняя точка относительно центра основания
 	Vector3 apex = { centerBase.x, centerBase.y + height, centerBase.z };
 
 	// Добавляем вершины в список
@@ -139,7 +139,7 @@ std::vector<Vector3> calculatePyramidVertices(Vector3 origin, float baseSize, fl
 
 
 
-// Функция для рисования пирамиды с треугольным основанием и разными цветами для каждой грани
+// Функция для рисования пирамиды 
 void drawPyramid(const std::vector<Vector3>& vertices) {
 	glBegin(GL_TRIANGLES);
 
@@ -161,7 +161,7 @@ void drawPyramid(const std::vector<Vector3>& vertices) {
 	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // P0
 	glVertex3f(vertices[3].x, vertices[3].y, vertices[3].z); // Apex
 
-	// Основание пирамиды - Оранжевый (Треугольник)
+	// Основание пирамиды - Оранжевый 
 	glColor3f(1.0f, 0.5f, 0.0f);
 	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // P0
 	glVertex3f(vertices[1].x, vertices[1].y, vertices[1].z); // P1
@@ -173,7 +173,7 @@ void drawPyramid(const std::vector<Vector3>& vertices) {
 
 
 
-// Вычисление вершин куба с равными сторонами в двухточечной перспективе
+// Вычисление вершин куба в двухточечной перспективе
 std::vector<Vector3> calculateCubeVertices(Vector3 origin, float size) {
 	std::vector<Vector3> vertices;
 
@@ -190,7 +190,7 @@ std::vector<Vector3> calculateCubeVertices(Vector3 origin, float size) {
 	// Высота куба
 	float height = size;
 
-	// Верхняя грань (P4, P5, P6, P7) должна быть на расстоянии height выше от нижней грани
+	// Верхняя грань (P4, P5, P6, P7) 
 	Vector3 up = { 0.0f, 1.0f, 0.0f }; // Вектор вверх для верхней грани
 
 	// Верхняя передняя левая вершина
@@ -220,7 +220,7 @@ std::vector<Vector3> calculateCubeVertices(Vector3 origin, float size) {
 
 
 
-// Функция для рисования куба с разными цветами для каждой грани
+// Функция для рисования куба 
 void drawCube(const std::vector<Vector3>& vertices) {
 	glBegin(GL_QUADS);
 
@@ -271,29 +271,11 @@ void drawCube(const std::vector<Vector3>& vertices) {
 
 // ------------------------------------------------------------------------
 
-// Функция для отображения линий схода
-void drawVanishingLines(const std::vector<Vector3>& vertices) {
-	glColor3f(0.5f, 0.5f, 0.5f);  // Серый цвет для линий схода
-	glBegin(GL_LINES);
 
-	// Линии схода от левой точки схода
-	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
-	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Нижняя передняя
-	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
-	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z); // Верхняя передняя
-	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
-	glVertex3f(vertices[6].x, vertices[6].y, vertices[6].z); // Верхняя справа
 
-	// Линии схода от правой точки схода
-	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
-	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Нижняя передняя
-	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
-	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z); // Верхняя передняя
-	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
-	glVertex3f(vertices[5].x, vertices[5].y, vertices[5].z); // Верхняя слева
 
-	glEnd();
-}
+
+
 
 // Функция обработки ввода для перемещения выбранного объекта
 void handleInput() {
@@ -317,48 +299,26 @@ void handleInput() {
 	}
 
 	// Если объект выбран, обрабатываем его движение
-	if (selectedObjectPosition != nullptr) {
-		if (selectedObject == 5) {
-			// Обработка ввода для цилиндра
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-				selectedObjectPosition->z -= moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-				selectedObjectPosition->z += moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-				selectedObjectPosition->x -= moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-				selectedObjectPosition->x += moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
-				selectedObjectPosition->y += moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
-				selectedObjectPosition->y -= moveSpeed;
-			}
+	if (selectedObjectPosition != nullptr) 
+	{
+		// Обработка ввода для объектов
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+			selectedObjectPosition->z -= moveSpeed;
 		}
-		else {
-			// Обработка ввода для остальных объектов
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
-				selectedObjectPosition->z -= moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
-				selectedObjectPosition->z += moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
-				selectedObjectPosition->x -= moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
-				selectedObjectPosition->x += moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
-				selectedObjectPosition->y += moveSpeed;
-			}
-			if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
-				selectedObjectPosition->y -= moveSpeed;
-			}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+			selectedObjectPosition->z += moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+			selectedObjectPosition->x -= moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+			selectedObjectPosition->x += moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Q)) {
+			selectedObjectPosition->y += moveSpeed;
+		}
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::E)) {
+			selectedObjectPosition->y -= moveSpeed;
 		}
 	}
 
@@ -383,8 +343,9 @@ void handleInput() {
 
 
 
-int main() {
-	sf::RenderWindow window(sf::VideoMode(1600, 1000), "Cube, Pyramid and Cylinder with Vanishing Lines", sf::Style::Default, sf::ContextSettings(24));
+int main() 
+{
+	sf::RenderWindow window(sf::VideoMode(1600, 1000), "KUB PIRAMIDA I CCILINDR", sf::Style::Default, sf::ContextSettings(24));
 	window.setFramerateLimit(60);
 
 	glEnable(GL_DEPTH_TEST);
@@ -393,10 +354,13 @@ int main() {
 	gluPerspective(45.0f, window.getSize().x / (float)window.getSize().y, 1.0f, 100.0f);
 	glMatrixMode(GL_MODELVIEW);
 
-	while (window.isOpen()) {
+	while (window.isOpen()) 
+	{
 		sf::Event event;
-		while (window.pollEvent(event)) {
-			if (event.type == sf::Event::Closed) {
+		while (window.pollEvent(event)) 
+		{
+			if (event.type == sf::Event::Closed)
+			{
 				window.close();
 			}
 		}
@@ -427,10 +391,36 @@ int main() {
 		drawCylinder(cylinderVertices, 20);  // 20 сегментов цилиндра
 
 		// Рисуем линии схода
-		drawVanishingLines(cubeVertices);
+		// drawVanishingLines(cubeVertices);
 
 		window.display();
 	}
 
 	return 0;
 }
+
+
+
+// Функция для отображения линий схода
+//void drawVanishingLines(const std::vector<Vector3>& vertices) {
+//	glColor3f(0.5f, 0.5f, 0.5f);  // Серый цвет для линий схода
+//	glBegin(GL_LINES);
+//
+//	// Линии схода от левой точки схода
+//	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
+//	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Нижняя передняя
+//	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
+//	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z); // Верхняя передняя
+//	glVertex3f(vanishingPointLeft.x, vanishingPointLeft.y, vanishingPointLeft.z);
+//	glVertex3f(vertices[6].x, vertices[6].y, vertices[6].z); // Верхняя справа
+//
+//	// Линии схода от правой точки схода
+//	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
+//	glVertex3f(vertices[0].x, vertices[0].y, vertices[0].z); // Нижняя передняя
+//	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
+//	glVertex3f(vertices[4].x, vertices[4].y, vertices[4].z); // Верхняя передняя
+//	glVertex3f(vanishingPointRight.x, vanishingPointRight.y, vanishingPointRight.z);
+//	glVertex3f(vertices[5].x, vertices[5].y, vertices[5].z); // Верхняя слева
+//
+//	glEnd();
+//}
