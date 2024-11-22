@@ -1,4 +1,4 @@
-// тест 1.0
+// версия v1.1
 
 #include <SFML/Window.hpp>
 #include <GL/glew.h>
@@ -172,9 +172,9 @@ int main() {
 	GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
 	// Параметры освещения и камеры
-	glm::vec3 lightPos(2.0f, 2.0f, 2.0f);
+	glm::vec3 lightPos(0.0f, 2.0f, 2.0f);
 	glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-	glm::vec3 viewPos(0.0f, 0.0f, 10.0f);
+	glm::vec3 viewPos(0.0f, 0.0f, 18.0f);
 	glm::vec3 lightDir(-1.0f, -1.0f, -1.0f);
 
 	float cutoff = cos(glm::radians(12.5f));
@@ -232,7 +232,7 @@ int main() {
 					std::cout << "Linear attenuation decreased: " << linear << std::endl;
 				}
 				if (event.key.code == sf::Keyboard::Equal) {
-					constant += 0.1f;
+					constant += 0.01f;
 					if (constant < 0.0f) constant = 0.0f;  // Ограничиваем значение
 					std::cout << "Constant attenuation increased: " << constant << std::endl;
 				}
