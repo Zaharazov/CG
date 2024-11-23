@@ -9,41 +9,42 @@
 #include <vector>
 #include <cmath>
 
-#ifndef M_PI
 #define M_PI 3.14159265358979323846
-#endif
 
-// Функция для компиляции шейдера
+// создание шейдера
 GLuint createShader(GLenum type, const char* source) {
-	GLuint shader = glCreateShader(type);
-	glShaderSource(shader, 1, &source, nullptr);
-	glCompileShader(shader);
-	return shader;
+	GLuint shader = glCreateShader(type); // создаем объект шейдера указанного типа
+	glShaderSource(shader, 1, &source, nullptr); // связывает код шейдера с объектом (куда, сколько строк, откуда, длина строки)
+	glCompileShader(shader); // компиляция шейдера
+	return shader; // возвращаем id шейдера
 }
 
-// Функция для создания программы шейдеров, объединяет вершинный и фрагментный шейдеры в одну шейдерную программу
+// создание программы шейдеров, объединяет вершинный и фрагментный шейдеры в одну шейдерную программу
 GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
-	GLuint vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
+	GLuint vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource); // создание вершинного и фрагментного шейдера
 	GLuint fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
 
-	GLuint shaderProgram = glCreateProgram();
-	glAttachShader(shaderProgram, vertexShader);
+	GLuint shaderProgram = glCreateProgram(); // создаем шейдерную программу
+	glAttachShader(shaderProgram, vertexShader); // привязка шейдеров к программе
 	glAttachShader(shaderProgram, fragmentShader);
-	glLinkProgram(shaderProgram);
+	glLinkProgram(shaderProgram); // сборка программы
 
-	return shaderProgram;
+	return shaderProgram; // возвращаем id
 }
 
-// Функция для создания цилиндра, создает массив вершин и индексов цилиндра, а затем настраивает VAO, VBO и EBO для использования OpenGL
+// создание цилиндра, создает массив вершин и индексов цилиндра, а затем настраивает VAO, VBO и EBO для использования OpenGL
 void setupCylinder(GLuint& VAO, GLuint& VBO, GLuint& EBO) {
-	const int numSegments = 12;  // Количество сегментов
+	// VAO (Vertex Array Object) - объект, который хранит состояние привязки атрибутов вершин
+	// VBO (Vertex Buffer Object) - буфер для хранения координат вершин
+	// EBO (Element Buffer Object) - буфер для хранения индексов, которые определяют треугольники
+	const int numSegments = 12;  // количество сегментов
 	const float radius = 1.0f;
 	const float height = 2.0f;
 
-	std::vector<GLfloat> vertices;
-	std::vector<GLuint> indices;
+	std::vector<GLfloat> vertices; // вершины
+	std::vector<GLuint> indices; // поверхность
 
-	// Генерация вершин цилиндра
+	// генерация вершин цилиндра
 	for (int i = 0; i < numSegments; i++) {
 		float angle = i * 2.0f * M_PI / numSegments;
 		float nextAngle = (i + 1) * 2.0f * M_PI / numSegments;
@@ -53,7 +54,7 @@ void setupCylinder(GLuint& VAO, GLuint& VBO, GLuint& EBO) {
 		float x1 = radius * cos(nextAngle);
 		float z1 = radius * sin(nextAngle);
 
-		// Нижняя и верхняя части
+		// для боковой грани
 		vertices.push_back(x0);
 		vertices.push_back(-height / 2.0f);
 		vertices.push_back(z0);
@@ -71,7 +72,34 @@ void setupCylinder(GLuint& VAO, GLuint& VBO, GLuint& EBO) {
 		vertices.push_back(z1);
 	}
 
-	// Индексы для треугольников
+	// центры верхней и нижней граней
+	vertices.push_back(0.0f); // центр нижней грани
+	vertices.push_back(-height / 2.0f);
+	vertices.push_back(0.0f);
+
+	vertices.push_back(0.0f); // центр верхней грани
+	vertices.push_back(height / 2.0f);
+	vertices.push_back(0.0f);
+
+	// вершины для окружности нижней и верхней граней
+	for (int i = 0; i < numSegments; i++) {
+		float angle = i * 2.0f * M_PI / numSegments;
+		float x = radius * cos(angle);
+		float z = radius * sin(angle);
+
+		// нижняя грань
+		vertices.push_back(x);
+		vertices.push_back(-height / 2.0f);
+		vertices.push_back(z);
+
+		// верхняя грань
+		vertices.push_back(x);
+		vertices.push_back(height / 2.0f);
+		vertices.push_back(z);
+	}
+
+
+	// индексы для треугольников
 	for (int i = 0; i < numSegments; i++) {
 		int startIdx = i * 4;
 		indices.push_back(startIdx);
@@ -83,35 +111,57 @@ void setupCylinder(GLuint& VAO, GLuint& VBO, GLuint& EBO) {
 		indices.push_back(startIdx + 2);
 	}
 
-	// Создаем VAO, VBO и EBO
-	glGenVertexArrays(1, &VAO);
+	// индексы для нижней грани
+	for (int i = 0; i < numSegments; i++) {
+		int centerIdx = vertices.size() - 2 * numSegments - 2;
+		int currentIdx = i * 2;
+		int nextIdx = ((i + 1) % numSegments) * 2;
+
+		indices.push_back(centerIdx);
+		indices.push_back(currentIdx);
+		indices.push_back(nextIdx);
+	}
+
+	// индексы для верхней грани
+	for (int i = 0; i < numSegments; i++) {
+		int centerIdx = vertices.size() - numSegments - 1;
+		int currentIdx = i * 2 + 1;
+		int nextIdx = ((i + 1) % numSegments) * 2 + 1;
+
+		indices.push_back(centerIdx);
+		indices.push_back(nextIdx);
+		indices.push_back(currentIdx);
+	}
+
+
+	// создаем VAO, VBO и EBO
+	glGenVertexArrays(1, &VAO); // сколько и что
 	glGenBuffers(1, &VBO);
 	glGenBuffers(1, &EBO);
 
-	glBindVertexArray(VAO);
+	glBindVertexArray(VAO); // активирует VAO, чтобы последующие настройки атрибутов вершин и буферов были связаны с этим VAO
 
-	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, VBO); // определяем текущий буффер
+	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(GLfloat), &vertices[0], GL_STATIC_DRAW); // загружаем в буффер размер данных, указатель на них и ключ (редко меняются данные)
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW); // аналогично
 
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0);
-	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (GLvoid*)0); // задаем формат хранения вершин - индекс, кол-во компонентов на вершину, тип данных, данные не нормализованные, размер вершины (шаг), смещение от начала буфера
+	glEnableVertexAttribArray(0); // активация того что выше (атрибут)
 
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0); // отвязываем VBO и VAO через id (во избежание ошибок)
 	glBindVertexArray(0);
 }
 
-// Основной цикл
 int main() {
-	sf::Window window(sf::VideoMode(1200, 1000), "Projector with cylinder", sf::Style::Default, sf::ContextSettings{ 24 });
-	glewInit();
+	sf::Window window(sf::VideoMode(1200, 1000), "Projector with cylinder", sf::Style::Default, sf::ContextSettings{ 24 }); // сцена с глубиной
+	glewInit(); // активируем glew
 
-	GLuint VAO, VBO, EBO;
-	setupCylinder(VAO, VBO, EBO);
+	GLuint VAO, VBO, EBO; // переменные для хранения инфы о вершинах и индексах цилиндра
+	setupCylinder(VAO, VBO, EBO); // создаем цилиндр
 
-	// Шейдеры
+	// шейдеры
 	const char* vertexShaderSource = R"(
         #version 330 core
         layout(location = 0) in vec3 aPos;
@@ -155,22 +205,22 @@ int main() {
 
 	GLuint shaderProgram = createShaderProgram(vertexShaderSource, fragmentShaderSource);
 
-	// Параметры освещения и камеры
+	// параметры освещения и камеры
 	glm::vec3 lightPos(0.0f, 2.0f, 2.0f);
 	glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 	glm::vec3 viewPos(0.0f, 2.0f, 10.0f);
 	glm::vec3 lightDir(-1.0f, -1.0f, -1.0f);
 
-	float cutoff = cos(glm::radians(12.5f));
+	float cutoff = cos(glm::radians(12.5f)); // для прожектора
 	float outerCutoff = cos(glm::radians(17.5f));
 
-	// Коэффициенты затухания
+	// коэффициенты затухания
 	float constant = 1.0f;
 	float linear = 0.09f;
 	float quadratic = 0.032f;
 
-	// Передача параметров в шейдер
-	glUseProgram(shaderProgram);
+	// передача параметров в шейдер
+	glUseProgram(shaderProgram); // активация созданных шейдеров
 	glUniform3fv(glGetUniformLocation(shaderProgram, "lightPos"), 1, glm::value_ptr(lightPos));
 	glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(viewPos));
 	glUniform3fv(glGetUniformLocation(shaderProgram, "lightColor"), 1, glm::value_ptr(lightColor));
@@ -181,12 +231,11 @@ int main() {
 	glUniform1f(glGetUniformLocation(shaderProgram, "linear"), linear);
 	glUniform1f(glGetUniformLocation(shaderProgram, "quadratic"), quadratic);
 
-	// Хранение текущей позиции цилиндра
+	// текущая позиция цилиндра
 	glm::vec3 cylinderPosition(0.0f, 0.0f, 0.0f);
 
-	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_DEPTH_TEST); // включили тест глубины
 
-	// Главный цикл
 	while (window.isOpen()) {
 		sf::Event event;
 		while (window.pollEvent(event)) {
@@ -194,39 +243,39 @@ int main() {
 				window.close();
 
 			if (event.type == sf::Event::KeyPressed) {
-				// Обработка нажатий клавиш для изменения параметров затухания
+				// обработка нажатий клавиш для изменения параметров затухания
 				if (event.key.code == sf::Keyboard::Up) {
 					quadratic += 0.01f;
-					if (quadratic < 0.0f) quadratic = 0.0f;  // Ограничиваем значение
+					if (quadratic < 0.0f) quadratic = 0.0f;  
 					std::cout << "Quadratic attenuation increased: " << quadratic << std::endl;
 				}
 				if (event.key.code == sf::Keyboard::Down) {
 					quadratic -= 0.01f;
-					if (quadratic < 0.0f) quadratic = 0.0f;  // Ограничиваем значение
+					if (quadratic < 0.0f) quadratic = 0.0f;  
 					std::cout << "Quadratic attenuation decreased: " << quadratic << std::endl;
 				}
 				if (event.key.code == sf::Keyboard::Right) {
 					linear += 0.01f;
-					if (linear < 0.0f) linear = 0.0f;  // Ограничиваем значение
+					if (linear < 0.0f) linear = 0.0f;  
 					std::cout << "Linear attenuation increased: " << linear << std::endl;
 				}
 				if (event.key.code == sf::Keyboard::Left) {
 					linear -= 0.01f;
-					if (linear < 0.0f) linear = 0.0f;  // Ограничиваем значение
+					if (linear < 0.0f) linear = 0.0f;  
 					std::cout << "Linear attenuation decreased: " << linear << std::endl;
 				}
 				if (event.key.code == sf::Keyboard::Equal) {
 					constant += 0.01f;
-					if (constant < 0.0f) constant = 0.0f;  // Ограничиваем значение
+					if (constant < 0.0f) constant = 0.0f;  
 					std::cout << "Constant attenuation increased: " << constant << std::endl;
 				}
 				if (event.key.code == sf::Keyboard::Dash) {
 					constant -= 0.1f;
-					if (constant < 0.0f) constant = 0.0f;  // Ограничиваем значение
+					if (constant < 0.0f) constant = 0.0f; 
 					std::cout << "Constant attenuation decreased: " << constant << std::endl;
 				}
 
-				glUniform1f(glGetUniformLocation(shaderProgram, "constant"), constant);
+				glUniform1f(glGetUniformLocation(shaderProgram, "constant"), constant); // обновляем параметры
 				glUniform1f(glGetUniformLocation(shaderProgram, "linear"), linear);
 				glUniform1f(glGetUniformLocation(shaderProgram, "quadratic"), quadratic);
 			}
@@ -258,28 +307,30 @@ int main() {
 			std::cout << "Cylinder moved forward: " << cylinderPosition.z << std::endl;
 		}
 
-		glm::mat4 model = glm::translate(glm::mat4(1.0f), cylinderPosition);
+		// создаем матрицы для преобразований
+		glm::mat4 model = glm::translate(glm::mat4(1.0f), cylinderPosition); // исходник и как меняем
+		// обновляем элементы сцены через матричные преобразования
+		glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f)); // 4х4 откуда, куда, где верх камеры
+		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 1200.0f / 1000.0f, 0.1f, 100.0f); // угол обзора, соотношение сторон, не видно близко и не видно далеко
 
-		glm::mat4 view = glm::lookAt(viewPos, glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-		glm::mat4 projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
-
-		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model));
+		// передаем изменения в шейдер
+		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(model)); // локация переменной, сколько, надо ли транспонировать, матрица
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
 		glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
 
-		// Очистка экрана
+		// очистка экрана
 		glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// Рендеринг цилиндра
+		// рендеринг цилиндра
 		glUseProgram(shaderProgram);
 		glBindVertexArray(VAO);
-		glDrawElements(GL_TRIANGLES, 72, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, 72, GL_UNSIGNED_INT, 0); // из чего, индексы, формат и смещение
 
 		window.display();
 	}
 
-	// Очистка ресурсов
+	// избавляемся от утечек памяти
 	glDeleteVertexArrays(1, &VAO);
 	glDeleteBuffers(1, &VBO);
 	glDeleteBuffers(1, &EBO);
