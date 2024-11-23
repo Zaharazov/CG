@@ -1,4 +1,4 @@
-// версия v1.1
+// версия v1.2
 
 #include <SFML/Window.hpp>
 #include <GL/glew.h>
@@ -121,7 +121,7 @@ void setupCylinder(GLuint& VAO, GLuint& VBO, GLuint& EBO) {
 
 // Основной цикл
 int main() {
-	sf::Window window(sf::VideoMode(1200, 1000), "OpenGL Spotlight with Attenuation Control");
+	sf::Window window(sf::VideoMode(1200, 1000), "OpenGL Spotlight with Attenuation Control", sf::Style::Default, sf::ContextSettings{24});
 	glewInit();
 
 	GLuint VAO, VBO, EBO;
@@ -174,7 +174,7 @@ int main() {
 	// Параметры освещения и камеры
 	glm::vec3 lightPos(0.0f, 2.0f, 2.0f);
 	glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
-	glm::vec3 viewPos(0.0f, 0.0f, 18.0f);
+	glm::vec3 viewPos(0.0f, 2.0f, 10.0f);
 	glm::vec3 lightDir(-1.0f, -1.0f, -1.0f);
 
 	float cutoff = cos(glm::radians(12.5f));
