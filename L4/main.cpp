@@ -1,4 +1,4 @@
-// версия v1.2
+// версия v1.3
 
 #include <SFML/Window.hpp>
 #include <GL/glew.h>
@@ -18,18 +18,10 @@ GLuint createShader(GLenum type, const char* source) {
 	GLuint shader = glCreateShader(type);
 	glShaderSource(shader, 1, &source, nullptr);
 	glCompileShader(shader);
-
-	int success;
-	glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-	if (!success) {
-		char infoLog[512];
-		glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-		std::cerr << "Shader compilation failed\n" << infoLog << std::endl;
-	}
 	return shader;
 }
 
-// Функция для создания программы шейдеров
+// Функция для создания программы шейдеров, объединяет вершинный и фрагментный шейдеры в одну шейдерную программу
 GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentShaderSource) {
 	GLuint vertexShader = createShader(GL_VERTEX_SHADER, vertexShaderSource);
 	GLuint fragmentShader = createShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
@@ -39,18 +31,10 @@ GLuint createShaderProgram(const char* vertexShaderSource, const char* fragmentS
 	glAttachShader(shaderProgram, fragmentShader);
 	glLinkProgram(shaderProgram);
 
-	int success;
-	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-	if (!success) {
-		char infoLog[512];
-		glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
-		std::cerr << "Program linking failed\n" << infoLog << std::endl;
-	}
-
 	return shaderProgram;
 }
 
-// Функция для создания цилиндра
+// Функция для создания цилиндра, создает массив вершин и индексов цилиндра, а затем настраивает VAO, VBO и EBO для использования OpenGL
 void setupCylinder(GLuint& VAO, GLuint& VBO, GLuint& EBO) {
 	const int numSegments = 12;  // Количество сегментов
 	const float radius = 1.0f;
@@ -121,7 +105,7 @@ void setupCylinder(GLuint& VAO, GLuint& VBO, GLuint& EBO) {
 
 // Основной цикл
 int main() {
-	sf::Window window(sf::VideoMode(1200, 1000), "OpenGL Spotlight with Attenuation Control", sf::Style::Default, sf::ContextSettings{24});
+	sf::Window window(sf::VideoMode(1200, 1000), "Projector with cylinder", sf::Style::Default, sf::ContextSettings{ 24 });
 	glewInit();
 
 	GLuint VAO, VBO, EBO;
