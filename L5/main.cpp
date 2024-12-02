@@ -1,4 +1,4 @@
-// версия 0.1 (только сферы)
+// версия 0.5 (сферы и куб)
 
 #include <SFML/Graphics.hpp>
 #include <cmath>
@@ -18,6 +18,7 @@ struct Vector3 {
 	Vector3 operator+(const Vector3& v) const { return Vector3(x + v.x, y + v.y, z + v.z); }
 	Vector3 operator-(const Vector3& v) const { return Vector3(x - v.x, y - v.y, z - v.z); }
 	Vector3 operator*(float s) const { return Vector3(x * s, y * s, z * s); }
+	Vector3 operator*(const Vector3& v) const { return Vector3(x * v.x, y * v.y, z * v.z); } // Покомпонентное умножение
 	Vector3 operator/(float s) const { return Vector3(x / s, y / s, z / s); }
 
 	float dot(const Vector3& v) const { return x * v.x + y * v.y + z * v.z; }
@@ -35,15 +36,18 @@ struct Vector3 {
 	}
 };
 
-// Сфера как объект сцены
+
+// Сфера
 struct Sphere {
 	Vector3 center;
 	float radius;
 	Vector3 color;
 	float reflectivity;
+	float transmissivity; // Прозрачность
+	float refractiveIndex; // Показатель преломления
 
-	Sphere(const Vector3& c, float r, const Vector3& col, float refl)
-		: center(c), radius(r), color(col), reflectivity(refl) {}
+	Sphere(const Vector3& c, float r, const Vector3& col, float refl, float trans, float refrIdx)
+		: center(c), radius(r), color(col), reflectivity(refl), transmissivity(trans), refractiveIndex(refrIdx) {}
 
 	bool intersect(const Vector3& origin, const Vector3& direction, float& t) const {
 		Vector3 oc = origin - center;
@@ -62,8 +66,8 @@ struct Sphere {
 
 // Плоскость
 struct Plane {
-	Vector3 point; // Точка на плоскости
-	Vector3 normal; // Нормаль к плоскости
+	Vector3 point;
+	Vector3 normal;
 	Vector3 color;
 	float reflectivity;
 
@@ -72,11 +76,49 @@ struct Plane {
 
 	bool intersect(const Vector3& origin, const Vector3& direction, float& t) const {
 		float denom = normal.dot(direction);
-		if (std::abs(denom) > 1e-6) { // Проверка на параллельность
+		if (std::abs(denom) > 1e-6) {
 			t = (point - origin).dot(normal) / denom;
 			return t >= 0;
 		}
 		return false;
+	}
+};
+
+// Куб
+struct Cube {
+	Vector3 min;
+	Vector3 max;
+	Vector3 color;
+	float reflectivity;
+	float transmissivity; // Прозрачность
+	float refractiveIndex; // Показатель преломления
+
+	Cube(const Vector3& min, const Vector3& max, const Vector3& col, float refl, float trans, float refrIdx)
+		: min(min), max(max), color(col), reflectivity(refl), transmissivity(trans), refractiveIndex(refrIdx) {}
+
+	bool intersect(const Vector3& origin, const Vector3& direction, float& t) const {
+		float tMin = (min.x - origin.x) / direction.x;
+		float tMax = (max.x - origin.x) / direction.x;
+		if (tMin > tMax) std::swap(tMin, tMax);
+
+		float tyMin = (min.y - origin.y) / direction.y;
+		float tyMax = (max.y - origin.y) / direction.y;
+		if (tyMin > tyMax) std::swap(tyMin, tyMax);
+
+		if ((tMin > tyMax) || (tyMin > tMax)) return false;
+		if (tyMin > tMin) tMin = tyMin;
+		if (tyMax < tMax) tMax = tyMax;
+
+		float tzMin = (min.z - origin.z) / direction.z;
+		float tzMax = (max.z - origin.z) / direction.z;
+		if (tzMin > tzMax) std::swap(tzMin, tzMax);
+
+		if ((tMin > tzMax) || (tzMin > tMax)) return false;
+		if (tzMin > tMin) tMin = tzMin;
+		if (tzMax < tMax) tMax = tzMax;
+
+		t = tMin >= 0 ? tMin : tMax;
+		return t >= 0;
 	}
 };
 
@@ -111,36 +153,28 @@ struct Camera {
 	}
 };
 
-// Функция для расчёта освещения
-Vector3 computeLighting(const Vector3& point, const Vector3& normal, const Vector3& viewDir,
-	const std::vector<Light>& lights, const Vector3& baseColor) {
-	Vector3 color(0, 0, 0);
-	for (const auto& light : lights) {
-		Vector3 lightDir = (light.position - point).normalize();
-
-		// Диффузное освещение
-		float diff = std::max(0.0f, normal.dot(lightDir));
-
-		// Зеркальное освещение
-		Vector3 reflectDir = (lightDir - normal * 2.0f * lightDir.dot(normal)).normalize();
-		float spec = std::pow(std::max(viewDir.dot(reflectDir), 0.0f), 32);
-
-		color = color + baseColor * diff + light.intensity * spec;
-	}
-	return color;
+// Преломление
+Vector3 refract(const Vector3& I, const Vector3& N, float eta) {
+	float cosI = -I.dot(N);
+	float sinT2 = eta * eta * (1 - cosI * cosI);
+	if (sinT2 > 1) return Vector3(0, 0, 0);
+	float cosT = std::sqrt(1 - sinT2);
+	return I * eta + N * (eta * cosI - cosT);
 }
 
 // Трассировка луча
 Vector3 traceRay(const Vector3& origin, const Vector3& direction,
 	const std::vector<Sphere>& spheres, const std::vector<Plane>& planes,
-	const std::vector<Light>& lights, int depth) {
+	const std::vector<Cube>& cubes, const std::vector<Light>& lights, int depth) {
 	if (depth <= 0) return Vector3(0, 0, 0);
 
 	float tMin = std::numeric_limits<float>::infinity();
 	Vector3 hitPoint, normal, baseColor;
 	float reflectivity = 0;
+	float transmissivity = 0;
+	float refractiveIndex = 1;
 
-	// Поиск пересечения со сферами
+	// Сферы
 	for (const auto& sphere : spheres) {
 		float t;
 		if (sphere.intersect(origin, direction, t) && t < tMin) {
@@ -149,10 +183,12 @@ Vector3 traceRay(const Vector3& origin, const Vector3& direction,
 			normal = (hitPoint - sphere.center).normalize();
 			baseColor = sphere.color;
 			reflectivity = sphere.reflectivity;
+			transmissivity = sphere.transmissivity;
+			refractiveIndex = sphere.refractiveIndex;
 		}
 	}
 
-	// Поиск пересечения с плоскостями
+	// Плоскости
 	for (const auto& plane : planes) {
 		float t;
 		if (plane.intersect(origin, direction, t) && t < tMin) {
@@ -164,59 +200,89 @@ Vector3 traceRay(const Vector3& origin, const Vector3& direction,
 		}
 	}
 
-	if (tMin == std::numeric_limits<float>::infinity()) return Vector3(0.1, 0.1, 0.1); // Цвет фона
+	// Кубы
+	for (const auto& cube : cubes) {
+		float t;
+		if (cube.intersect(origin, direction, t) && t < tMin) {
+			tMin = t;
+			hitPoint = origin + direction * t;
 
-	// Базовое освещение
-	Vector3 viewDir = (origin - hitPoint).normalize();
-	Vector3 localColor = computeLighting(hitPoint, normal, viewDir, lights, baseColor);
+			// Определение нормали
+			if (std::abs(hitPoint.x - cube.min.x) < 1e-3) normal = Vector3(-1, 0, 0);
+			else if (std::abs(hitPoint.x - cube.max.x) < 1e-3) normal = Vector3(1, 0, 0);
+			else if (std::abs(hitPoint.y - cube.min.y) < 1e-3) normal = Vector3(0, -1, 0);
+			else if (std::abs(hitPoint.y - cube.max.y) < 1e-3) normal = Vector3(0, 1, 0);
+			else if (std::abs(hitPoint.z - cube.min.z) < 1e-3) normal = Vector3(0, 0, -1);
+			else if (std::abs(hitPoint.z - cube.max.z) < 1e-3) normal = Vector3(0, 0, 1);
 
-	// Рекурсивное отражение
-	if (reflectivity > 0) {
-		Vector3 reflectDir = direction - normal * 2 * direction.dot(normal);
-		Vector3 reflectedColor = traceRay(hitPoint + normal * 0.001, reflectDir, spheres, planes, lights, depth - 1);
-		localColor = localColor * (1 - reflectivity) + reflectedColor * reflectivity;
+			baseColor = cube.color;
+			reflectivity = cube.reflectivity;
+			transmissivity = cube.transmissivity;
+			refractiveIndex = cube.refractiveIndex;
+		}
 	}
 
-	return localColor;
+	if (tMin == std::numeric_limits<float>::infinity()) return Vector3(0, 0, 0); // Ничего не пересечено
+
+	// Освещение
+	Vector3 color(0, 0, 0);
+	for (const auto& light : lights) {
+		Vector3 lightDir = (light.position - hitPoint).normalize();
+		Vector3 lightColor = baseColor * std::max(0.f, normal.dot(lightDir));
+		color = color + lightColor * light.intensity;
+	}
+
+	// Рефлексия
+	if (reflectivity > 0) {
+		Vector3 reflectDir = direction - normal * 2 * direction.dot(normal);
+		color = color + traceRay(hitPoint + normal * 1e-4, reflectDir, spheres, planes, cubes, lights, depth - 1) * reflectivity;
+	}
+
+	// Преломление
+	if (transmissivity > 0) {
+		float eta = direction.dot(normal) < 0 ? 1 / refractiveIndex : refractiveIndex;
+		Vector3 refractDir = refract(direction, normal, eta);
+		color = color + traceRay(hitPoint - normal * 1e-4, refractDir, spheres, planes, cubes, lights, depth - 1) * transmissivity;
+	}
+
+	return color;
 }
 
-// Основная программа
+// Основной рендеринг
 int main() {
 	const int width = 1200, height = 1000;
-	sf::RenderWindow window(sf::VideoMode(width, height), "Ray Tracing");
-
-	// Настройка сцены
-	std::vector<Sphere> spheres = {
-		Sphere(Vector3(0, 0, -5), 1, Vector3(1, 0, 0), 0.5),
-		Sphere(Vector3(2, 1, -6), 1, Vector3(0, 1, 0), 0.3),
-		Sphere(Vector3(-2, 1, -7), 1, Vector3(0, 0, 1), 0.7),
-	};
-
-	std::vector<Plane> planes = {
-		Plane(Vector3(0, -1, 0), Vector3(0, 1, 0), Vector3(0.5, 0.5, 0.5), 0.2)
-	};
-
-	std::vector<Light> lights = {
-		Light(Vector3(0, 10, 0), Vector3(1, 1, 1)), // Верхний источник света
-		Light(Vector3(-5, 5, 5), Vector3(0.5, 0.5, 0.5)),
-	};
-
-	Camera camera(Vector3(0, 2, 0), Vector3(0, 0, -3), Vector3(0, 1, 0));
-
+	sf::RenderWindow window(sf::VideoMode(width, height), "Ray Tracer");
 	sf::Image image;
 	image.create(width, height);
 
-	// Рендеринг
+	std::vector<Sphere> spheres = {
+		Sphere(Vector3(0, -1, 5), 1, Vector3(1, 0, 0), 0.5, 0.5, 1.5),
+		Sphere(Vector3(2, 0, 4), 1, Vector3(0, 1, 0), 0.5, 0.5, 1.5),
+	};
+
+	std::vector<Plane> planes = {
+		Plane(Vector3(0, -2, 0), Vector3(0, 1, 0), Vector3(1, 1, 1), 0.3),
+	};
+
+	std::vector<Cube> cubes = {
+		Cube(Vector3(-2, 0, 3), Vector3(-1, 1, 4), Vector3(0, 0, 1), 0.4, 0.6, 1.33),
+	};
+
+	std::vector<Light> lights = {
+		Light(Vector3(0, 5, 0), Vector3(1, 1, 1)),
+	};
+
+	Camera camera(Vector3(0, 2, 0.5), Vector3(0, 0, 3), Vector3(0, 1, 0));
+
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
-			Vector3 rayDir = camera.getRayDirection(x, y, width, height);
-			Vector3 color = traceRay(camera.position, rayDir, spheres, planes, lights, 5);
-
+			Vector3 direction = camera.getRayDirection(x, y, width, height);
+			Vector3 color = traceRay(camera.position, direction, spheres, planes, cubes, lights, 5);
 			sf::Color pixelColor(
-				static_cast<sf::Uint8>(std::min(color.x * 255, 255.0f)),
-				static_cast<sf::Uint8>(std::min(color.y * 255, 255.0f)),
-				static_cast<sf::Uint8>(std::min(color.z * 255, 255.0f)));
-
+				std::min(255, static_cast<int>(color.x * 255)),
+				std::min(255, static_cast<int>(color.y * 255)),
+				std::min(255, static_cast<int>(color.z * 255))
+			);
 			image.setPixel(x, y, pixelColor);
 		}
 	}
@@ -228,10 +294,10 @@ int main() {
 	while (window.isOpen()) {
 		sf::Event event;
 		while (window.pollEvent(event)) {
-			if (event.type == sf::Event::Closed)
+			if (event.type == sf::Event::Closed) {
 				window.close();
+			}
 		}
-
 		window.clear();
 		window.draw(sprite);
 		window.display();
