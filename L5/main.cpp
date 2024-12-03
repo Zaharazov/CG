@@ -1,4 +1,4 @@
-// версия 0.5 (сферы и куб)
+// версия 0.9 (без комментов)
 
 #include <SFML/Graphics.hpp>
 #include <cmath>
@@ -7,6 +7,9 @@
 #include <limits>
 
 #define M_PI 3.14159265358979323846
+
+int traceDepth = 5;
+
 
 // Вектор для 3D операций
 struct Vector3 {
@@ -265,19 +268,21 @@ int main() {
 	};
 
 	std::vector<Cube> cubes = {
-		Cube(Vector3(-2, 0, 3), Vector3(-1, 1, 4), Vector3(0, 0, 1), 0.4, 0.6, 1.33),
+		Cube(Vector3(-2.5, 0, 3), Vector3(-1.5, 1, 4), Vector3(0, 0, 1), 0.4, 0.6, 1.33),
+		Cube(Vector3(0.5, 0.5, 6), Vector3(1.5, 1.5, 7), Vector3(1, 0, 1), 0.4, 0.6, 1.33),
 	};
 
 	std::vector<Light> lights = {
 		Light(Vector3(0, 5, 0), Vector3(1, 1, 1)),
+		Light(Vector3(5, 7, 5), Vector3(0.1, 0.1, 0.1)),
 	};
 
-	Camera camera(Vector3(0, 2, 0.5), Vector3(0, 0, 3), Vector3(0, 1, 0));
+	Camera camera(Vector3(0, 2, -0.5), Vector3(-1, 0, 3), Vector3(0, 1, 0));
 
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
 			Vector3 direction = camera.getRayDirection(x, y, width, height);
-			Vector3 color = traceRay(camera.position, direction, spheres, planes, cubes, lights, 5);
+			Vector3 color = traceRay(camera.position, direction, spheres, planes, cubes, lights, traceDepth);
 			sf::Color pixelColor(
 				std::min(255, static_cast<int>(color.x * 255)),
 				std::min(255, static_cast<int>(color.y * 255)),
